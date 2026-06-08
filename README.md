@@ -163,7 +163,7 @@ phishshield/
 
 1. Clone the repository
 
-git clone https://github.com/yourusername/phishshield.git
+git clone https://github.com/Vaishnavi992/GPCCSI-PROJECT.git
 
 2. Move into the project directory
 

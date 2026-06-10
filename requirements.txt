@@ -1,6 +1,7 @@
 flask
 opencv-python-headless
+numpy
 pillow
 requests
 gunicorn
-python-whois
+whois

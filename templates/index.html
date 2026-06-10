@@ -645,13 +645,17 @@ function renderResult(r) {
       </div>
 
       <div class="action-row">
-        <button class="btn-sec" onclick="downloadReport(${JSON.stringify(r).replace(/</g,'&lt;')})">
+        <button class="btn-sec" onclick="downloadReport('${cid}')">
           <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
           Download report
         </button>
       </div>
     </div>
   </div>`;
+
+  // Store result data globally by card id
+  window._reportData = window._reportData || {};
+  window._reportData[cid] = r;
 
   setTimeout(()=>{
     document.querySelectorAll('.age-fill').forEach(el=>{ el.style.width=(el.dataset.pct||0)+'%'; });
@@ -672,7 +676,9 @@ function st(cid, tab, btn) {
 }
 
 // ── Download report ───────────────────────────────────────────────────────────
-function downloadReport(r) {
+function downloadReport(cid) {
+  const r = (window._reportData || {})[cid];
+  if (!r) { alert('Report data not found. Please scan again.'); return; }
   const a=r.analysis, ip=a.details.ip_analysis||{}, wh=a.details.whois||{}, vt=a.details.virustotal||{};
   const lines=[
     'LinQ-R — QR Threat Detection Report',

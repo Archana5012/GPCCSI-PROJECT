@@ -4,711 +4,745 @@
   <meta charset="UTF-8"/>
   <meta name="viewport" content="width=device-width,initial-scale=1.0"/>
   <title>LinQ-R — QR Threat Detection</title>
-  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet"/>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet"/>
   <style>
     *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+
     :root{
-      --bg:#080c14;--surface:#0d1421;--panel:#111827;--border:#1e2d45;
-      --accent:#00e5ff;--accent2:#7c4dff;--safe:#00cc88;--warn:#ffaa00;
-      --danger:#ff4444;--text:#e2eaf5;--muted:#5a7391;
-      --font:'Space Grotesk',sans-serif;--mono:'JetBrains Mono',monospace;
+      --bg:       #fafafa;
+      --bg2:      #ffffff;
+      --bg3:      #f3f4f6;
+      --white:    #ffffff;
+      --border:   #e5e7eb;
+      --border2:  #f3f4f6;
+      --text:     #111827;
+      --sub:      #6b7280;
+      --muted:    #9ca3af;
+      --safe:     #16a34a;
+      --safe-bg:  #f0fdf4;
+      --safe-bd:  #bbf7d0;
+      --warn:     #d97706;
+      --warn-bg:  #fffbeb;
+      --warn-bd:  #fde68a;
+      --danger:   #dc2626;
+      --danger-bg:#fef2f2;
+      --danger-bd:#fecaca;
+      --ink:      #374151;
+      --font:     'Inter', sans-serif;
+      --mono:     'IBM Plex Mono', monospace;
     }
+
     html{scroll-behavior:smooth}
-    body{font-family:var(--font);background:var(--bg);color:var(--text);min-height:100vh;overflow-x:hidden}
-    body::before{content:'';position:fixed;inset:0;background-image:linear-gradient(rgba(0,229,255,.03) 1px,transparent 1px),linear-gradient(90deg,rgba(0,229,255,.03) 1px,transparent 1px);background-size:40px 40px;pointer-events:none;z-index:0}
+    body{font-family:var(--font);background:var(--bg);color:var(--text);min-height:100vh;-webkit-font-smoothing:antialiased}
 
-    .wrap{position:relative;z-index:1;max-width:960px;margin:0 auto;padding:0 24px 80px}
+    .wrap{max-width:1100px;margin:0 auto;padding:0 24px 96px}
 
-    /* NAV */
-    header{display:flex;align-items:center;justify-content:space-between;padding:28px 0 40px;border-bottom:1px solid var(--border);margin-bottom:48px}
-    .logo{display:flex;align-items:center;gap:12px}
-    .logo-icon{width:40px;height:40px;background:linear-gradient(135deg,var(--accent),var(--accent2));border-radius:10px;display:grid;place-items:center;font-size:20px}
-    .logo-text{font-size:22px;font-weight:700;letter-spacing:-.5px}
-    .logo-text span{color:var(--accent)}
-    .nav-tabs{display:flex;gap:4px}
-    .tab-btn{background:none;border:1px solid var(--border);color:var(--muted);padding:8px 18px;border-radius:8px;cursor:pointer;font-family:var(--font);font-size:14px;transition:.2s}
-    .tab-btn.active,.tab-btn:hover{border-color:var(--accent);color:var(--accent);background:rgba(0,229,255,.06)}
+    /* ── HEADER ── */
+    .header-bar{background:linear-gradient(135deg,#1e1b4b 0%,#312e81 40%,#4c1d95 100%);border-bottom:1px solid rgba(255,255,255,.08);position:sticky;top:0;z-index:100}
+    .header-inner{max-width:1100px;margin:0 auto;padding:0 24px}
+    /* ── NAV ── */
+    nav{display:flex;align-items:center;justify-content:space-between;padding:18px 0;margin-bottom:0}
+    .logo{display:flex;align-items:center;gap:10px}
+    .logo-mark{width:38px;height:38px;background:rgba(255,255,255,.15);border:1px solid rgba(255,255,255,.2);border-radius:10px;display:grid;place-items:center;flex-shrink:0;box-shadow:0 0 12px rgba(99,102,241,.3)}
+    .logo-mark svg{width:18px;height:18px;fill:none;stroke:#fff;stroke-width:2;stroke-linecap:round}
+    .logo-name{font-size:22px;font-weight:900;letter-spacing:-.5px;line-height:1}
+    .logo-name .lin{color:#ffffff}
+    .logo-name .q{color:#a5b4fc}
+    .logo-name .dash-r{color:#f9a8d4}
+    .logo-name .sub{color:rgba(255,255,255,.45);font-weight:400;font-size:13px;margin-left:6px}
+    .nav-right{display:flex;gap:6px}
+    .tab-btn{background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.15);color:rgba(255,255,255,.7);padding:7px 16px;border-radius:8px;cursor:pointer;font-family:var(--font);font-size:13px;font-weight:500;transition:.15s;display:flex;align-items:center;gap:5px}
+    .tab-btn:hover{background:rgba(255,255,255,.15);border-color:rgba(255,255,255,.3);color:#fff}
+    .tab-btn.active{background:rgba(255,255,255,.2);border-color:rgba(255,255,255,.35);color:#fff}
 
-    /* HERO */
-    .hero{text-align:center;margin-bottom:48px}
-    .hero-eyebrow{font-family:var(--mono);font-size:11px;color:var(--accent);letter-spacing:3px;text-transform:uppercase;margin-bottom:18px}
-    .hero h1{font-size:clamp(28px,5vw,50px);font-weight:700;line-height:1.1;letter-spacing:-1.5px;margin-bottom:16px}
-    .hero h1 em{font-style:normal;background:linear-gradient(90deg,var(--accent),var(--accent2));-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
-    .hero p{color:var(--muted);font-size:16px;max-width:520px;margin:0 auto;line-height:1.6}
-
-    /* PAGES */
+    /* ── PAGE ── */
     .page{display:none}.page.active{display:block}
 
-    /* UPLOAD */
-    .upload-section{background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:36px;margin-bottom:28px}
-    .drop-zone{border:2px dashed var(--border);border-radius:12px;padding:48px 32px;text-align:center;cursor:pointer;transition:.2s;position:relative;overflow:hidden}
-    .drop-zone:hover,.drop-zone.drag-over{border-color:var(--accent);background:rgba(0,229,255,.04)}
-    .drop-zone input[type=file]{position:absolute;inset:0;opacity:0;cursor:pointer}
-    .drop-icon{font-size:44px;margin-bottom:14px;display:block}
-    .drop-title{font-size:18px;font-weight:600;margin-bottom:6px}
-    .drop-sub{color:var(--muted);font-size:14px}
+    /* ── HERO ── */
+    .hero{text-align:center;padding:64px 0 52px;border-bottom:1px solid var(--border);margin-bottom:48px}
+    .hero-eyebrow{font-size:11px;font-weight:700;letter-spacing:2.5px;text-transform:uppercase;margin-bottom:20px;background:linear-gradient(90deg,#6366f1,#ec4899);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;display:inline-block}
+    .hero h1{font-size:52px;font-weight:800;letter-spacing:-1.5px;line-height:1.05;margin-bottom:20px;color:var(--text)}
+    .hero h1 .accent{background:linear-gradient(90deg,#6366f1,#ec4899);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
+    .hero h1 .dot{color:#ec4899}
+    .hero p{font-size:15px;color:var(--sub);line-height:1.7;max-width:520px;margin:0 auto}
+    @media(max-width:640px){.hero h1{font-size:34px}.hero{padding:44px 0 36px}}
 
-    /* File queue */
-    .file-queue{margin-top:20px;display:flex;flex-direction:column;gap:10px}
-    .file-item{display:flex;align-items:center;gap:14px;background:var(--panel);border:1px solid var(--border);border-radius:10px;padding:12px 16px}
-    .file-thumb{width:48px;height:48px;object-fit:cover;border-radius:6px;border:1px solid var(--border);flex-shrink:0}
-    .file-info{flex:1}
-    .file-name{font-weight:600;font-size:14px}
-    .file-size{color:var(--muted);font-size:12px;margin-top:2px}
-    .file-status{font-family:var(--mono);font-size:12px;margin-top:3px}
-    .btn-remove-file{background:none;border:1px solid var(--border);color:var(--muted);border-radius:6px;padding:4px 10px;cursor:pointer;font-size:12px;transition:.2s;flex-shrink:0}
-    .btn-remove-file:hover{border-color:var(--danger);color:var(--danger)}
+    /* ── HEADING (history page) ── */
+    .page-head{margin-bottom:36px}
+    .page-head h1{font-size:24px;font-weight:700;letter-spacing:-.4px;margin-bottom:6px;color:var(--text)}
+    .page-head p{font-size:13.5px;color:var(--sub);line-height:1.65;max-width:480px}
 
-    .btn-scan{display:flex;align-items:center;justify-content:center;gap:10px;width:100%;margin-top:20px;padding:15px;background:linear-gradient(135deg,var(--accent),var(--accent2));color:#000;font-family:var(--font);font-size:16px;font-weight:700;border:none;border-radius:10px;cursor:pointer;transition:.2s}
-    .btn-scan:hover{opacity:.9}.btn-scan:active{transform:scale(.99)}.btn-scan:disabled{opacity:.5;cursor:not-allowed}
+    /* ── UPLOAD ── */
+    .upload-box{border:2px dashed #f0abdc;border-radius:16px;padding:52px 24px;text-align:center;cursor:pointer;position:relative;background:linear-gradient(145deg,#fff0f6,#fdf2ff);transition:.2s}
+    .upload-box:hover,.upload-box.drag-over{border-color:#d946a8;background:linear-gradient(145deg,#ffe4f3,#f5e8ff)}
+    .upload-box input[type=file]{position:absolute;inset:0;opacity:0;cursor:pointer}
+    .upload-icon{width:56px;height:56px;background:linear-gradient(135deg,#f9d0ec,#e9d5ff);border:1px solid #f0abdc;border-radius:14px;display:grid;place-items:center;margin:0 auto 18px;box-shadow:0 2px 12px rgba(217,70,168,.12)}
+    .upload-icon svg{width:24px;height:24px;stroke:#9333ea;fill:none;stroke-width:1.6;stroke-linecap:round;stroke-linejoin:round}
+    .upload-title{font-size:15px;font-weight:700;margin-bottom:6px;color:#3b0764}
+    .upload-sub{font-size:13px;color:#a855f7}
+    .upload-sub span{color:#7c3aed;font-weight:600;text-decoration:underline;text-underline-offset:2px}
 
-    .loader{display:none;text-align:center;padding:28px;color:var(--muted);font-size:14px}
-    .loader.show{display:block}
-    .spinner{width:32px;height:32px;border:3px solid var(--border);border-top-color:var(--accent);border-radius:50%;animation:spin .8s linear infinite;margin:0 auto 10px}
+    /* File list */
+    .file-list{margin-top:12px;display:flex;flex-direction:column;gap:8px}
+    .file-row{display:flex;align-items:center;gap:12px;background:var(--white);border:1px solid var(--border);border-radius:8px;padding:10px 14px}
+    .file-thumb{width:36px;height:36px;object-fit:cover;border-radius:5px;border:1px solid var(--border);flex-shrink:0}
+    .file-info{flex:1;min-width:0}
+    .file-name{font-size:13px;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+    .file-meta{font-size:12px;color:var(--muted);margin-top:2px}
+    .file-status{font-size:12px;margin-top:2px}
+    .btn-rm{background:none;border:none;color:var(--muted);cursor:pointer;padding:2px 6px;border-radius:4px;font-size:16px;line-height:1;transition:.15s;flex-shrink:0}
+    .btn-rm:hover{background:#f3f4f6;color:var(--text)}
+
+    /* Scan btn */
+    .btn-primary{display:flex;align-items:center;justify-content:center;gap:6px;width:100%;margin-top:16px;padding:11px 20px;background:linear-gradient(135deg,#6366f1,#ec4899);color:#fff;font-family:var(--font);font-size:13px;font-weight:700;border:none;border-radius:10px;cursor:pointer;transition:all .2s ease;letter-spacing:-.1px;box-shadow:0 3px 12px rgba(99,102,241,.25)}
+    .btn-primary:hover:not(:disabled){background:linear-gradient(135deg,#4f46e5,#db2777);box-shadow:0 5px 18px rgba(99,102,241,.35);transform:translateY(-1px)}
+    .btn-primary:active,.btn-primary.clicked{background:linear-gradient(135deg,#ec4899,#6366f1)!important;box-shadow:0 4px 16px rgba(236,72,153,.4)!important;transform:scale(.97)!important}
+    .btn-primary.scanning{background:linear-gradient(135deg,#6366f1,#ec4899)!important;opacity:.85}
+    .btn-primary:disabled{background:#f3f4f6!important;color:#9ca3af!important;border:1.5px solid #e5e7eb!important;cursor:not-allowed;box-shadow:none;transform:none}
+    .btn-wrap{display:flex;justify-content:center;margin-top:4px}
+
+    /* Loader */
+    .loader{display:none;align-items:center;justify-content:center;gap:10px;padding:20px;color:var(--sub);font-size:13px}
+    .loader.show{display:flex}
+    .spin{width:16px;height:16px;border:2px solid #e5e7eb;border-top-color:#7c3aed;border-radius:50%;animation:spin .7s linear infinite;flex-shrink:0}
     @keyframes spin{to{transform:rotate(360deg)}}
 
-    /* ERROR */
-    .error-box{display:none;background:rgba(255,68,68,.08);border:1px solid rgba(255,68,68,.3);border-radius:10px;padding:16px 20px;color:var(--danger);margin-top:14px;font-size:14px}
-    .error-box.show{display:block}
+    /* Error */
+    .err{display:none;padding:12px 14px;background:var(--danger-bg);border:1px solid var(--danger-bd);border-radius:8px;color:var(--danger);font-size:13px;margin-top:10px}
+    .err.show{display:block}
 
-    /* RESULTS */
-    .results-list{display:flex;flex-direction:column;gap:28px}
-    .result-card{background:var(--surface);border:1px solid var(--border);border-radius:16px;overflow:hidden}
-    .result-card-header{display:flex;align-items:center;gap:14px;padding:20px 24px;border-bottom:1px solid var(--border)}
-    .score-ring{width:56px;height:56px;border-radius:50%;display:grid;place-items:center;font-family:var(--mono);font-size:16px;font-weight:700;border:3px solid;flex-shrink:0}
-    .result-title{font-size:18px;font-weight:700}
-    .result-sub{color:var(--muted);font-size:13px;margin-top:3px}
-    .risk-badge{margin-left:auto;padding:6px 16px;border-radius:6px;font-family:var(--mono);font-size:12px;font-weight:600;letter-spacing:1px;text-transform:uppercase;flex-shrink:0}
-    .result-card-body{padding:20px 24px}
+    /* ── RESULTS ── */
+    .results-list{margin-top:28px;display:flex;flex-direction:column;gap:16px}
 
-    /* URL bar */
-    .url-card{background:var(--panel);border:1px solid var(--border);border-radius:10px;padding:16px 20px;margin-bottom:18px}
-    .url-label{font-family:var(--mono);font-size:10px;text-transform:uppercase;letter-spacing:2px;color:var(--muted);margin-bottom:6px}
-    .url-value{font-family:var(--mono);font-size:14px;color:var(--accent);word-break:break-all}
+    .rcard{background:var(--white);border:1px solid var(--border);border-radius:10px;overflow:hidden}
 
-    /* Tabs inside result */
-    .inner-tabs{display:flex;gap:4px;margin-bottom:16px;flex-wrap:wrap}
-    .inner-tab{background:none;border:1px solid var(--border);color:var(--muted);padding:6px 14px;border-radius:6px;cursor:pointer;font-family:var(--font);font-size:13px;transition:.2s}
-    .inner-tab.active,.inner-tab:hover{border-color:var(--accent);color:var(--accent);background:rgba(0,229,255,.05)}
-    .inner-panel{display:none}.inner-panel.active{display:block}
+    /* Risk strip at top of card */
+    .rcard-strip{height:3px}
 
-    /* Grid cards */
-    .mini-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(155px,1fr));gap:10px;margin-bottom:4px}
-    .mini-card{background:var(--panel);border:1px solid var(--border);border-radius:8px;padding:14px}
-    .mini-label{font-size:10px;text-transform:uppercase;letter-spacing:1.5px;color:var(--muted);margin-bottom:5px}
-    .mini-value{font-family:var(--mono);font-size:14px;font-weight:600;word-break:break-word}
+    .rcard-top{display:flex;align-items:flex-start;gap:14px;padding:18px 20px 16px;border-bottom:1px solid var(--border2)}
 
-    /* Flags */
-    .flag-item{display:flex;align-items:flex-start;gap:10px;padding:9px 0;border-bottom:1px solid var(--border);font-size:13px;line-height:1.5}
-    .flag-item:last-child{border-bottom:none}
-    .flag-dot{width:7px;height:7px;border-radius:50%;margin-top:5px;flex-shrink:0}
+    /* Score circle — simple filled pill */
+    .score-pill{padding:4px 10px;border-radius:99px;font-family:var(--mono);font-size:12px;font-weight:500;flex-shrink:0;margin-top:2px}
 
-    /* IP section */
-    .ip-section{margin-top:4px}
-    .map-placeholder{background:var(--panel);border:1px solid var(--border);border-radius:8px;padding:20px;text-align:center;color:var(--muted);font-size:13px;margin-top:12px}
+    .rcard-info{flex:1;min-width:0}
+    .rcard-title{font-size:15px;font-weight:600;margin-bottom:3px;color:var(--text)}
+    .rcard-file{font-size:12px;color:var(--muted)}
+
+    .risk-tag{margin-left:auto;padding:3px 10px;border-radius:99px;font-size:11px;font-weight:600;letter-spacing:.3px;text-transform:uppercase;flex-shrink:0}
+
+    .rcard-body{padding:16px 20px}
+
+    /* URL row */
+    .url-row{display:flex;align-items:baseline;gap:8px;padding:10px 12px;background:var(--bg3);border-radius:7px;margin-bottom:16px}
+    .url-lbl{font-size:11px;color:var(--muted);font-weight:500;flex-shrink:0;text-transform:uppercase;letter-spacing:.5px}
+    .url-val{font-family:var(--mono);font-size:12px;color:var(--ink);word-break:break-all;line-height:1.5}
+
+    /* Tabs */
+    .tabs{display:flex;gap:0;border-bottom:1px solid var(--border);margin-bottom:16px;overflow-x:auto;scrollbar-width:none}
+    .tabs::-webkit-scrollbar{display:none}
+    .tab{background:none;border:none;border-bottom:2px solid transparent;color:var(--muted);padding:8px 14px;cursor:pointer;font-family:var(--font);font-size:13px;font-weight:500;white-space:nowrap;transition:.15s;margin-bottom:-1px}
+    .tab:hover{color:var(--text)}
+    .tab.active{color:var(--text);border-bottom-color:var(--text)}
+    .panel{display:none}.panel.active{display:block}
+
+    /* Data table */
+    .dtable{width:100%;border-collapse:collapse}
+    .dtable tr{border-bottom:1px solid var(--border2)}
+    .dtable tr:last-child{border-bottom:none}
+    .dtable td{padding:9px 0;font-size:13px;vertical-align:top}
+    .dtable td:first-child{color:var(--sub);width:38%;font-weight:500}
+    .dtable td:last-child{color:var(--text);font-family:var(--mono);font-size:12px;word-break:break-all}
+
+    /* Findings list */
+    .finding{display:flex;align-items:flex-start;gap:10px;padding:8px 0;border-bottom:1px solid var(--border2);font-size:13px;line-height:1.5;color:var(--ink)}
+    .finding:last-child{border:none}
+    .finding-icon{flex-shrink:0;margin-top:1px;font-size:13px}
+
+    /* VT summary bar */
+    .vt-summary{display:flex;align-items:center;gap:16px;padding:14px;background:var(--bg);border-radius:8px;margin-bottom:14px}
+    .vt-score{font-family:var(--mono);font-size:22px;font-weight:700;flex-shrink:0}
+    .vt-label{font-size:13px;font-weight:600;margin-bottom:2px}
+    .vt-sub{font-size:12px;color:var(--sub)}
+    .vt-link{display:inline-flex;align-items:center;gap:4px;font-size:12px;color:var(--sub);text-decoration:none;margin-top:10px;border:1px solid var(--border);padding:5px 10px;border-radius:6px;transition:.15s}
+    .vt-link:hover{border-color:#9ca3af;color:var(--text)}
 
     /* Age bar */
-    .age-bar-wrap{grid-column:1/-1;margin-top:4px}
-    .age-bar-label{font-size:11px;color:var(--muted);margin-bottom:5px}
-    .age-bar-bg{height:5px;background:var(--border);border-radius:99px;overflow:hidden}
-    .age-bar-fill{height:100%;border-radius:99px;transition:width 1s ease}
+    .age-row{margin-top:10px}
+    .age-lbl{font-size:12px;color:var(--sub);margin-bottom:5px}
+    .age-track{height:4px;background:var(--border);border-radius:99px;overflow:hidden}
+    .age-fill{height:100%;border-radius:99px;transition:width 1s ease}
 
-    /* Report btn */
-    .btn-report{display:inline-flex;align-items:center;gap:8px;margin-top:14px;padding:10px 20px;background:none;border:1px solid var(--accent);color:var(--accent);border-radius:8px;cursor:pointer;font-family:var(--font);font-size:14px;font-weight:600;transition:.2s}
-    .btn-report:hover{background:rgba(0,229,255,.08)}
+    /* Action row */
+    .action-row{display:flex;gap:8px;margin-top:14px;padding-top:14px;border-top:1px solid var(--border2)}
+    .btn-sec{display:inline-flex;align-items:center;gap:6px;padding:7px 14px;background:none;border:1px solid var(--border);color:var(--sub);border-radius:7px;cursor:pointer;font-family:var(--font);font-size:13px;font-weight:500;transition:.15s}
+    .btn-sec:hover{border-color:#9ca3af;color:var(--text);background:#f9fafb}
 
-    /* ── HISTORY PAGE ── */
-    .history-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:20px}
-    .history-title{font-size:20px;font-weight:700}
-    .btn-clear{background:none;border:1px solid var(--danger);color:var(--danger);padding:7px 16px;border-radius:7px;cursor:pointer;font-family:var(--font);font-size:13px;transition:.2s}
-    .btn-clear:hover{background:rgba(255,68,68,.08)}
-    .history-list{display:flex;flex-direction:column;gap:12px}
-    .history-item{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:16px 20px;display:flex;align-items:center;gap:16px;cursor:pointer;transition:.2s}
-    .history-item:hover{border-color:var(--accent)}
-    .h-dot{width:10px;height:10px;border-radius:50%;flex-shrink:0}
-    .h-url{font-family:var(--mono);font-size:13px;color:var(--accent);flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-    .h-risk{font-size:12px;font-weight:600;flex-shrink:0}
-    .h-time{font-size:11px;color:var(--muted);flex-shrink:0}
-    .h-score{font-family:var(--mono);font-size:13px;font-weight:700;flex-shrink:0}
-    .empty-state{text-align:center;padding:64px 32px;color:var(--muted)}
-    .empty-icon{font-size:48px;margin-bottom:16px}
+    /* ── HISTORY ── */
+    .hist-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:20px}
+    .hist-head h2{font-size:18px;font-weight:600;color:var(--text)}
+    .btn-ghost{background:none;border:1px solid var(--border);color:var(--sub);padding:6px 12px;border-radius:7px;cursor:pointer;font-family:var(--font);font-size:13px;transition:.15s}
+    .btn-ghost:hover{color:var(--danger);border-color:var(--danger-bd)}
 
-    /* Layers */
-    .layers{margin-top:56px}
-    .section-label{font-family:var(--mono);font-size:10px;text-transform:uppercase;letter-spacing:3px;color:var(--muted);margin-bottom:20px}
-    .layers-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:14px}
-    .layer-card{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:22px;transition:.2s}
-    .layer-card:hover{border-color:var(--accent)}
-    .layer-num{font-family:var(--mono);font-size:10px;color:var(--accent);margin-bottom:10px;opacity:.6}
-    .layer-icon{font-size:22px;margin-bottom:8px;display:block}
-    .layer-name{font-weight:600;font-size:14px;margin-bottom:5px}
-    .layer-desc{font-size:12px;color:var(--muted);line-height:1.5}
+    .hitem{display:flex;align-items:center;gap:12px;padding:13px 16px;background:var(--white);border:1px solid var(--border);border-radius:9px;margin-bottom:8px;cursor:pointer;transition:.15s}
+    .hitem:hover{border-color:#9ca3af}
+    .hdot{width:8px;height:8px;border-radius:50%;flex-shrink:0}
+    .hurl{font-family:var(--mono);font-size:12px;color:var(--ink);flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+    .hrisk{font-size:11px;font-weight:600;flex-shrink:0}
+    .hscore{font-family:var(--mono);font-size:12px;color:var(--sub);flex-shrink:0}
+    .htime{font-size:11px;color:var(--muted);flex-shrink:0}
+    .empty{text-align:center;padding:56px 24px;color:var(--muted)}
+    .empty-ico{font-size:32px;margin-bottom:12px}
+    .empty p{font-size:14px}
 
-    footer{margin-top:72px;padding-top:28px;border-top:1px solid var(--border);display:flex;justify-content:space-between;color:var(--muted);font-size:12px}
+    /* ── HOW IT WORKS ── */
+    .how{margin-top:56px;padding-top:40px;border-top:1px solid var(--border)}
+    .how-title{font-size:13px;font-weight:600;color:var(--sub);text-transform:uppercase;letter-spacing:.5px;margin-bottom:20px}
+    .how-list{display:flex;flex-direction:column;gap:0}
+    .how-item{display:flex;align-items:flex-start;gap:16px;padding:14px 0;border-bottom:1px solid var(--border2)}
+    .how-item:last-child{border:none}
+    .how-num{font-family:var(--mono);font-size:11px;color:var(--muted);width:20px;flex-shrink:0;padding-top:1px}
+    .how-content{}
+    .how-name{font-size:14px;font-weight:500;margin-bottom:2px;color:var(--text)}
+    .how-desc{font-size:13px;color:var(--sub);line-height:1.5}
 
-    /* ════════════════════════════════════════════
-       RESPONSIVE — ALL DEVICES
-       1. Large Desktop  : 1400px+
-       2. Desktop        : 1024px – 1399px   (base styles already handle this)
-       3. Laptop         : 900px  – 1023px
-       4. Tablet         : 600px  – 899px
-       5. Large Phone    : 430px  – 599px
-       6. Small Phone    : 360px  – 429px
-       7. Very Small     : < 360px
-    ════════════════════════════════════════════ */
+    /* ── TWO PANEL LAYOUT ── */
+    .two-panel{display:grid;grid-template-columns:1fr 1fr;gap:24px;align-items:start;margin-top:0}
+    .panel-left{background:var(--white);border:1px solid var(--border);border-radius:16px;padding:24px;min-height:520px}
+    .panel-right{background:var(--white);border:1px solid var(--border);border-radius:16px;padding:24px;position:sticky;top:90px;max-height:calc(100vh - 120px);overflow-y:auto;scrollbar-width:thin;scrollbar-color:#e5e7eb transparent}
+    .panel-right::-webkit-scrollbar{width:4px}
+    .panel-right::-webkit-scrollbar-track{background:transparent}
+    .panel-right::-webkit-scrollbar-thumb{background:#e5e7eb;border-radius:99px}
+    .panel-section-title{font-size:12px;font-weight:600;text-transform:uppercase;letter-spacing:1px;color:var(--muted);margin-bottom:16px}
 
-    /* ── 1. LARGE DESKTOP (1400px+) ── */
-    @media(min-width:1400px){
-      .wrap{max-width:1100px;padding:0 40px 100px}
-      header{padding:36px 0 52px;margin-bottom:60px}
-      .logo-icon{width:46px;height:46px;font-size:24px}
-      .logo-text{font-size:26px}
-      .tab-btn{padding:10px 26px;font-size:15px}
-      .hero{margin-bottom:60px}
-      .hero-eyebrow{font-size:12px;margin-bottom:22px}
-      .hero h1{font-size:58px;letter-spacing:-2px}
-      .hero p{font-size:18px;max-width:580px}
-      .upload-section{padding:44px;border-radius:20px}
-      .drop-zone{padding:60px 40px}
-      .drop-icon{font-size:52px;margin-bottom:18px}
-      .drop-title{font-size:20px}
-      .drop-sub{font-size:15px}
-      .btn-scan{padding:18px;font-size:17px;border-radius:12px}
-      .result-card-header{padding:26px 30px}
-      .score-ring{width:64px;height:64px;font-size:18px}
-      .result-title{font-size:20px}
-      .result-sub{font-size:14px}
-      .risk-badge{padding:8px 20px;font-size:13px}
-      .result-card-body{padding:24px 30px}
-      .url-card{padding:20px 24px}
-      .url-value{font-size:15px}
-      .inner-tab{font-size:14px;padding:8px 18px}
-      .mini-grid{grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:12px}
-      .mini-card{padding:18px}
-      .mini-label{font-size:11px}
-      .mini-value{font-size:15px}
-      .layers-grid{grid-template-columns:repeat(4,1fr);gap:16px}
-      .layer-card{padding:26px}
-      .layer-icon{font-size:26px}
-      .layer-name{font-size:15px}
-      .layer-desc{font-size:13px}
-      footer{margin-top:90px;font-size:13px}
+    /* upload formats tag */
+    .upload-formats{font-size:11px;color:var(--muted);margin-top:8px}
+
+    /* right empty state */
+    .right-empty{display:flex;flex-direction:column;align-items:center;justify-content:center;padding:60px 20px;text-align:center;min-height:400px}
+    .right-empty-icon{width:52px;height:52px;background:var(--bg3);border-radius:12px;display:grid;place-items:center;margin-bottom:16px}
+    .right-empty-icon svg{width:22px;height:22px;color:var(--muted)}
+    .right-empty-title{font-size:15px;font-weight:600;color:var(--text);margin-bottom:6px}
+    .right-empty-sub{font-size:13px;color:var(--muted);line-height:1.6;max-width:220px}
+
+    /* hide how section border on left panel */
+    .panel-left .how{margin-top:28px;padding-top:24px;border-top:1px solid var(--border2)}
+
+    /* results inside panel */
+    .panel-right .results-list{margin-top:0}
+
+    @media(max-width:780px){
+      .two-panel{grid-template-columns:1fr}
+      .panel-right{position:static}
+      .right-empty{height:200px;padding:30px 20px}
     }
 
-    /* ── 3. LAPTOP (900px – 1023px) ── */
-    @media(max-width:1023px){
-      .wrap{max-width:100%;padding:0 32px 90px}
-      header{padding:24px 0 36px;margin-bottom:44px}
-      .hero h1{font-size:clamp(32px,4vw,46px)}
-      .hero p{font-size:15px}
-      .upload-section{padding:32px 28px}
-      .drop-zone{padding:44px 28px}
-      .mini-grid{grid-template-columns:repeat(auto-fill,minmax(150px,1fr))}
-      .layers-grid{grid-template-columns:repeat(3,1fr);gap:14px}
-      .result-card-header{padding:20px 22px}
-      .result-card-body{padding:18px 22px}
-    }
+    /* ── FOOTER ── */
+    footer{background:linear-gradient(135deg,#1e1b4b 0%,#312e81 50%,#4c1d95 100%);margin-top:64px}
+    .footer-inner{max-width:1100px;margin:0 auto;padding:52px 24px 28px}
+    .footer-top{display:grid;grid-template-columns:1.4fr 2fr;gap:48px;padding-bottom:40px;border-bottom:1px solid rgba(255,255,255,.1)}
+    .footer-logo{display:flex;align-items:center;gap:10px;margin-bottom:14px}
+    .footer-logo-mark{width:34px;height:34px;background:rgba(255,255,255,.15);border:1px solid rgba(255,255,255,.2);border-radius:9px;display:grid;place-items:center;flex-shrink:0}
+    .footer-logo-mark svg{width:16px;height:16px}
+    .footer-logo-name{font-size:20px;font-weight:900;letter-spacing:-.4px}
+    .footer-tagline{font-size:13px;color:rgba(255,255,255,.5);line-height:1.7;margin-bottom:18px}
+    .footer-tech-pills{display:flex;flex-wrap:wrap;gap:6px}
+    .footer-tech-pills span{font-size:11px;font-weight:500;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.12);color:rgba(255,255,255,.6);padding:3px 10px;border-radius:99px}
+    .footer-cols{display:grid;grid-template-columns:repeat(3,1fr);gap:24px}
+    .footer-col{display:flex;flex-direction:column;gap:10px}
+    .footer-col-title{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:1.2px;color:rgba(255,255,255,.35);margin-bottom:4px}
+    .footer-col a{font-size:13.5px;color:rgba(255,255,255,.65);text-decoration:none;transition:.15s;line-height:1}
+    .footer-col a:hover{color:#fff}
+    .footer-bottom{display:flex;align-items:center;justify-content:space-between;padding-top:24px;font-size:12px;color:rgba(255,255,255,.3)}
+    .footer-bottom-links{display:flex;gap:20px}
+    .footer-bottom-links a{color:rgba(255,255,255,.3);text-decoration:none;transition:.15s}
+    .footer-bottom-links a:hover{color:rgba(255,255,255,.7)}
+    @media(max-width:768px){.footer-top{grid-template-columns:1fr}.footer-cols{grid-template-columns:repeat(2,1fr)}.footer-bottom{flex-direction:column;gap:10px;text-align:center}}
+    @media(max-width:480px){.footer-cols{grid-template-columns:1fr}}
 
-    /* ── 4. TABLET (600px – 899px) ── */
-    @media(max-width:899px){
-      .wrap{padding:0 24px 80px}
-      header{padding:22px 0 32px;margin-bottom:36px}
-      .logo-text{font-size:20px}
-      .tab-btn{padding:9px 16px;font-size:13px}
-      .hero{margin-bottom:36px}
-      .hero h1{font-size:clamp(28px,5vw,38px)}
-      .hero p{font-size:15px}
-      .upload-section{padding:28px 22px}
-      .drop-zone{padding:38px 24px}
-      .drop-icon{font-size:40px}
-      .btn-scan{padding:15px;font-size:15px}
-      .result-card-header{padding:18px 20px}
-      .result-card-body{padding:16px 20px}
-      .mini-grid{grid-template-columns:repeat(3,1fr);gap:10px}
-      .layers-grid{grid-template-columns:repeat(2,1fr);gap:12px}
-      .history-item{padding:14px 18px}
-      footer{font-size:12px}
+    /* ── MOBILE ── */
+    @media(max-width:640px){
+      .wrap{padding:0 16px 72px}
+      nav{margin-bottom:36px}
+      .logo-name span{display:none}
+      .page-head h1{font-size:22px}
+      .rcard-top{flex-wrap:wrap;gap:10px}
+      .risk-tag{margin-left:0}
+      .tabs{gap:0}
+      .tab{padding:8px 10px;font-size:12px}
+      .dtable td:first-child{width:44%}
+      .how{margin-top:40px}
+      footer{flex-direction:column;gap:6px;text-align:center}
+      .hitem{flex-wrap:wrap;gap:6px}
+      .hurl{width:100%}
+      .action-row{flex-wrap:wrap}
     }
-
-    /* ── 5. LARGE PHONE (430px – 599px) ── */
-    @media(max-width:599px){
-      .wrap{padding:0 16px 70px}
-      header{flex-direction:column;gap:12px;text-align:center;padding:18px 0 24px;margin-bottom:28px}
-      .logo-icon{width:36px;height:36px;font-size:18px}
-      .logo-text{font-size:19px}
-      .nav-tabs{width:100%;gap:6px}
-      .tab-btn{flex:1;text-align:center;padding:10px 8px;font-size:13px;border-radius:10px}
-      .hero{margin-bottom:26px}
-      .hero-eyebrow{font-size:10px;letter-spacing:2px;margin-bottom:12px}
-      .hero h1{font-size:clamp(22px,7vw,30px);letter-spacing:-0.6px}
-      .hero p{font-size:14px;max-width:100%}
-      .upload-section{padding:18px 14px;border-radius:14px}
-      .drop-zone{padding:30px 16px;border-radius:10px}
-      .drop-icon{font-size:34px;margin-bottom:10px}
-      .drop-title{font-size:15px}
-      .drop-sub{font-size:12px;line-height:1.5}
-      .file-item{padding:10px 12px;gap:10px}
-      .file-thumb{width:40px;height:40px}
-      .file-name{font-size:13px}
-      .file-size,.file-status{font-size:11px}
-      .btn-scan{padding:14px;font-size:15px;margin-top:14px;min-height:50px;border-radius:10px}
-      .result-card-header{flex-wrap:wrap;gap:10px;padding:14px 16px}
-      .score-ring{width:46px;height:46px;font-size:14px}
-      .result-title{font-size:15px}
-      .result-sub{font-size:12px}
-      .risk-badge{margin-left:0;font-size:11px;padding:5px 12px}
-      .result-card-body{padding:14px 16px}
-      .url-card{padding:12px 14px}
-      .url-value{font-size:12px;line-height:1.6}
-      .inner-tabs{flex-wrap:nowrap;overflow-x:auto;padding-bottom:6px;-webkit-overflow-scrolling:touch;scrollbar-width:none;gap:6px;margin-bottom:14px}
-      .inner-tabs::-webkit-scrollbar{display:none}
-      .inner-tab{white-space:nowrap;font-size:12px;padding:7px 14px;flex-shrink:0}
-      .mini-grid{grid-template-columns:repeat(2,1fr);gap:8px}
-      .mini-card{padding:11px 12px}
-      .mini-label{font-size:9px}
-      .mini-value{font-size:13px}
-      .flag-item{font-size:12px;padding:8px 0;gap:8px}
-      .flag-dot{width:6px;height:6px;margin-top:4px}
-      .btn-report{width:100%;justify-content:center;margin-top:12px;font-size:13px;padding:11px 20px}
-      .history-header{flex-direction:column;gap:10px;align-items:flex-start}
-      .history-title{font-size:18px}
-      .history-item{flex-wrap:wrap;gap:6px;padding:12px 14px}
-      .h-url{width:100%;font-size:12px}
-      .h-time{font-size:10px;width:100%}
-      .layers{margin-top:36px}
-      .layers-grid{grid-template-columns:1fr 1fr;gap:10px}
-      .layer-card{padding:16px}
-      .layer-icon{font-size:18px;margin-bottom:6px}
-      .layer-name{font-size:13px}
-      .layer-desc{font-size:11px}
-      footer{flex-direction:column;gap:5px;text-align:center;font-size:11px;margin-top:44px;padding-top:22px}
-      .error-box{font-size:13px;padding:14px 16px}
-    }
-
-    /* ── 6. SMALL PHONE (360px – 429px) ── */
-    @media(max-width:429px){
-      .wrap{padding:0 12px 60px}
-      .hero h1{font-size:20px;letter-spacing:-0.4px}
-      .tab-btn{font-size:12px;padding:10px 6px}
-      .result-card-header{padding:12px}
-      .result-card-body{padding:12px}
-      .drop-zone{padding:24px 12px}
-      .btn-scan{font-size:14px}
-      .upload-section{padding:14px 12px}
-      .layers-grid{grid-template-columns:1fr}
-      .mini-grid{grid-template-columns:repeat(2,1fr)}
-      .inner-tab{font-size:11px;padding:6px 12px}
-    }
-
-    /* ── 7. VERY SMALL PHONE (< 360px) ── */
-    @media(max-width:359px){
-      .wrap{padding:0 10px 56px}
-      .hero h1{font-size:18px}
-      .logo-text{font-size:17px}
-      .logo-icon{width:32px;height:32px;font-size:16px}
-      .tab-btn{font-size:11px;padding:9px 4px}
-      .mini-grid{grid-template-columns:1fr}
-      .layers-grid{grid-template-columns:1fr}
-      .mini-value{font-size:12px}
-      .score-ring{width:40px;height:40px;font-size:13px}
-      .result-title{font-size:14px}
-      .inner-tab{font-size:11px;padding:5px 10px}
+    @media(max-width:380px){
+      .vt-summary{flex-direction:column;align-items:flex-start;gap:8px}
     }
   </style>
 </head>
 <body>
+
+<div class="header-bar">
+  <div class="header-inner">
+    <nav>
+      <div class="logo">
+        <div class="logo-mark">
+          <svg viewBox="0 0 16 16" fill="none" stroke="#fff" stroke-width="1.8" stroke-linecap="round"><rect x="1" y="1" width="6" height="6" rx="1"/><rect x="9" y="1" width="6" height="6" rx="1"/><rect x="1" y="9" width="6" height="6" rx="1"/><rect x="10" y="10" width="2" height="2"/><rect x="13" y="10" width="2" height="2"/><rect x="10" y="13" width="2" height="2"/><rect x="13" y="13" width="2" height="2"/></svg>
+        </div>
+        <span class="logo-name"><span class="lin">Lin</span><span class="q">Q</span><span class="dash-r">-R</span><span class="sub">/ Threat Detection</span></span>
+      </div>
+      <div class="nav-right">
+        <button class="tab-btn active" onclick="showPage('scan',this)">Scan</button>
+        <button class="tab-btn" onclick="showPage('history',this)">History</button>
+      </div>
+    </nav>
+  </div>
+</div>
+
 <div class="wrap">
 
-  <header>
-    <div class="logo">
-      <div class="logo-icon">🔍</div>
-      <div class="logo-text">Lin<span>Q-R</span></div>
-    </div>
-    <div class="nav-tabs">
-      <button class="tab-btn active" onclick="showPage('scan')">⚡ Scan</button>
-      <button class="tab-btn" onclick="showPage('history')">🕒 History</button>
-    </div>
-  </header>
-
-  <!-- ══ SCAN PAGE ══ -->
+  <!-- ══ SCAN ══ -->
   <div class="page active" id="page-scan">
 
-    <section class="hero">
-      <p class="hero-eyebrow">Intelligent QR Security</p>
-      <h1>Scan before you <em>trust.</em></h1>
+    <div class="hero">
+      <div class="hero-eyebrow">Intelligent QR Security</div>
+      <h1>Scan before you <span class="accent">trust</span><span class="dot">.</span></h1>
       <p>Upload one or multiple QR codes — LinQ-R decodes each, extracts URLs, and runs multi-layer threat analysis.</p>
-    </section>
-
-    <section class="upload-section">
-      <div class="drop-zone" id="dropZone">
-        <input type="file" id="fileInput" accept="image/*" multiple/>
-        <span class="drop-icon">📷</span>
-        <div class="drop-title">Drop QR code images here</div>
-        <div class="drop-sub">Multiple files supported — JPG, PNG, WEBP</div>
-      </div>
-
-      <div class="file-queue" id="fileQueue"></div>
-      <div class="error-box" id="errorBox"></div>
-
-      <button class="btn-scan" id="scanBtn" onclick="runScan()" disabled>
-        <span>⚡</span> <span id="scanBtnLabel">Analyze QR Code</span>
-      </button>
-      <div class="loader" id="loader">
-        <div class="spinner"></div>
-        Decoding QR codes & running threat analysis…
-      </div>
-    </section>
-
-    <div class="results-list" id="resultsList"></div>
-
-    <section class="layers">
-      <div class="section-label">Detection Layers</div>
-      <div class="layers-grid">
-        <div class="layer-card"><div class="layer-num">LAYER 01</div><span class="layer-icon">📷</span><div class="layer-name">QR Decoding</div><div class="layer-desc">WeChatQRCode engine with OpenCV fallback for accurate decoding.</div></div>
-        <div class="layer-card"><div class="layer-num">LAYER 02</div><span class="layer-icon">🔗</span><div class="layer-name">URL Heuristics</div><div class="layer-desc">Checks URL length, special chars, subdomain depth, phishing keywords.</div></div>
-        <div class="layer-card"><div class="layer-num">LAYER 03</div><span class="layer-icon">🌐</span><div class="layer-name">DNS Resolution</div><div class="layer-desc">Verifies domain resolves to a real IP — fake domains fail this.</div></div>
-        <div class="layer-card"><div class="layer-num">LAYER 04</div><span class="layer-icon">🔒</span><div class="layer-name">SSL Validation</div><div class="layer-desc">Checks HTTPS and certificate expiry date.</div></div>
-        <div class="layer-card"><div class="layer-num">LAYER 05</div><span class="layer-icon">🏢</span><div class="layer-name">IP & GeoIP</div><div class="layer-desc">Geolocates the server, checks hosting org for known abuse networks.</div></div>
-        <div class="layer-card"><div class="layer-num">LAYER 06</div><span class="layer-icon">📋</span><div class="layer-name">WHOIS Intel</div><div class="layer-desc">Domain age, registrar, country — new domains score higher risk.</div></div>
-        <div class="layer-card"><div class="layer-num">LAYER 07</div><span class="layer-icon">📊</span><div class="layer-name">Risk Scoring</div><div class="layer-desc">All signals aggregate into a 0–100 score: Safe / Suspicious / Malicious.</div></div>
-      </div>
-    </section>
-
-  </div><!-- /scan page -->
-
-  <!-- ══ HISTORY PAGE ══ -->
-  <div class="page" id="page-history">
-    <div class="history-header">
-      <div class="history-title">🕒 Scan History</div>
-      <button class="btn-clear" onclick="clearHistory()">🗑 Clear All</button>
     </div>
-    <div class="history-list" id="historyList"></div>
+
+    <!-- TWO PANEL LAYOUT -->
+    <div class="two-panel">
+
+      <!-- LEFT: Upload -->
+      <div class="panel-left">
+        <div class="panel-section-title">Upload QR Code</div>
+
+        <div class="upload-box" id="dropZone">
+          <input type="file" id="fileInput" accept="image/*" multiple/>
+          <div class="upload-icon">
+            <svg viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+          </div>
+          <div class="upload-title">Drop QR images here</div>
+          <div class="upload-sub">or <span>browse files</span></div>
+          <div class="upload-formats">JPG · PNG · WEBP · multiple files supported</div>
+        </div>
+
+        <div class="file-list" id="fileQueue"></div>
+        <div class="err" id="errorBox"></div>
+
+        <button class="btn-primary" id="scanBtn" onclick="runScan();this.classList.add('scanning')" disabled>
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+          <span id="scanBtnLabel">Analyze QR Code</span>
+        </button>
+
+        <div class="loader" id="loader">
+          <div class="spin"></div>
+          Running threat analysis…
+        </div>
+
+        <!-- How it works -->
+        <div class="how">
+          <div class="how-title">How it works</div>
+          <div class="how-list">
+            <div class="how-item"><div class="how-num">01</div><div class="how-content"><div class="how-name">QR Decoding</div><div class="how-desc">Extracts the embedded URL using WeChatQRCode with OpenCV fallback.</div></div></div>
+            <div class="how-item"><div class="how-num">02</div><div class="how-content"><div class="how-name">URL Heuristics</div><div class="how-desc">Checks structure, length, special characters, subdomain depth, and phishing keywords.</div></div></div>
+            <div class="how-item"><div class="how-num">03</div><div class="how-content"><div class="how-name">DNS + SSL</div><div class="how-desc">Verifies domain resolves to a real IP and HTTPS certificate is valid.</div></div></div>
+            <div class="how-item"><div class="how-num">04</div><div class="how-content"><div class="how-name">IP & WHOIS</div><div class="how-desc">Locates the server and checks domain age — new domains are a red flag.</div></div></div>
+            <div class="how-item"><div class="how-num">05</div><div class="how-content"><div class="how-name">VirusTotal</div><div class="how-desc">Checks the URL against 70+ security engines including Google and Kaspersky.</div></div></div>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- RIGHT: Results panel -->
+      <div class="panel-right">
+        <div class="panel-section-title">Scan Results</div>
+        <div class="right-empty" id="rightEmpty">
+          <div class="right-empty-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"><path d="M3 7h18M3 12h18M3 17h18"/></svg>
+          </div>
+          <div class="right-empty-title">No results yet</div>
+          <div class="right-empty-sub">Upload a QR code and click Analyze to see threat details here</div>
+        </div>
+        <div class="results-list" id="resultsList"></div>
+      </div>
+
+    </div>
+
+  </div>
+
+  <!-- ══ HISTORY ══ -->
+  <div class="page" id="page-history">
+    <div class="hist-head">
+      <h2>Scan history</h2>
+      <button class="btn-ghost" onclick="clearHistory()">Clear all</button>
+    </div>
+    <div id="historyList"></div>
   </div>
 
   <footer>
-    <div>LinQ-R — Intelligent QR & URL Threat Detection</div>
-    <div>Python · Flask · OpenCV · ip-api · WHOIS</div>
+    <div class="footer-inner">
+
+      <div class="footer-top">
+        <div class="footer-brand">
+          <div class="footer-logo">
+            <div class="footer-logo-mark">
+              <svg viewBox="0 0 16 16" fill="none" stroke="#fff" stroke-width="1.8" stroke-linecap="round"><rect x="1" y="1" width="6" height="6" rx="1"/><rect x="9" y="1" width="6" height="6" rx="1"/><rect x="1" y="9" width="6" height="6" rx="1"/><rect x="10" y="10" width="2" height="2"/><rect x="13" y="10" width="2" height="2"/><rect x="10" y="13" width="2" height="2"/><rect x="13" y="13" width="2" height="2"/></svg>
+            </div>
+            <span class="footer-logo-name"><span style="color:#fff">Lin</span><span style="color:#a5b4fc">Q</span><span style="color:#f9a8d4">-R</span></span>
+          </div>
+          <p class="footer-tagline">Intelligent QR &amp; URL threat detection.<br>Scan before you trust.</p>
+          <div class="footer-tech-pills">
+            <span>Python</span><span>Flask</span><span>OpenCV</span><span>VirusTotal</span>
+          </div>
+        </div>
+
+        <div class="footer-cols">
+          <div class="footer-col">
+            <div class="footer-col-title">Features</div>
+            <a href="#">QR Scan</a>
+            <a href="#">Scan History</a>
+            <a href="#">URL Analysis</a>
+            <a href="#">VirusTotal Check</a>
+            <a href="#">WHOIS Lookup</a>
+          </div>
+          <div class="footer-col">
+            <div class="footer-col-title">Detection</div>
+            <a href="#">DNS Resolution</a>
+            <a href="#">SSL Validation</a>
+            <a href="#">IP GeoAnalysis</a>
+            <a href="#">Phishing Keywords</a>
+            <a href="#">Domain Age Check</a>
+          </div>
+          <div class="footer-col">
+            <div class="footer-col-title">Project</div>
+            <a href="#">About LinQ-R</a>
+            <a href="#">How It Works</a>
+            <a href="#">Tech Stack</a>
+            <a href="#">Report a Bug</a>
+          </div>
+        </div>
+      </div>
+
+      <div class="footer-bottom">
+        <span>&copy; 2025 LinQ-R &mdash; QR Threat Detection. Built for security awareness.</span>
+        <div class="footer-bottom-links">
+          <a href="#">Privacy</a>
+          <a href="#">Terms</a>
+          <a href="#">Contact</a>
+        </div>
+      </div>
+
+    </div>
   </footer>
 
-</div><!-- /wrap -->
+</div>
 
 <script>
-// ── State ─────────────────────────────────────────────────────────────────────
 let selectedFiles = [];
 
-// ── Page Navigation ───────────────────────────────────────────────────────────
-function showPage(name) {
+// ── Nav ───────────────────────────────────────────────────────────────────────
+function showPage(name, btn) {
   document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
   document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
   document.getElementById('page-' + name).classList.add('active');
-  event.currentTarget.classList.add('active');
+  btn.classList.add('active');
   if (name === 'history') loadHistory();
 }
 
-// ── File Handling ─────────────────────────────────────────────────────────────
-const fileInput = document.getElementById('fileInput');
-fileInput.addEventListener('change', e => addFiles(Array.from(e.target.files)));
+// ── Files ─────────────────────────────────────────────────────────────────────
+document.getElementById('fileInput').addEventListener('change', e => addFiles(Array.from(e.target.files)));
 
-const dropZone = document.getElementById('dropZone');
-dropZone.addEventListener('dragover',  e => { e.preventDefault(); dropZone.classList.add('drag-over'); });
-dropZone.addEventListener('dragleave', () => dropZone.classList.remove('drag-over'));
-dropZone.addEventListener('drop', e => {
-  e.preventDefault(); dropZone.classList.remove('drag-over');
-  addFiles(Array.from(e.dataTransfer.files));
-});
+const dz = document.getElementById('dropZone');
+dz.addEventListener('dragover',  e => { e.preventDefault(); dz.classList.add('drag-over'); });
+dz.addEventListener('dragleave', () => dz.classList.remove('drag-over'));
+dz.addEventListener('drop', e => { e.preventDefault(); dz.classList.remove('drag-over'); addFiles(Array.from(e.dataTransfer.files)); });
 
 function addFiles(files) {
-  files.forEach(f => {
-    if (!selectedFiles.find(x => x.name === f.name && x.size === f.size))
-      selectedFiles.push(f);
-  });
+  files.forEach(f => { if (!selectedFiles.find(x => x.name===f.name && x.size===f.size)) selectedFiles.push(f); });
   renderQueue();
 }
-
-function removeFile(idx) {
-  selectedFiles.splice(idx, 1);
-  renderQueue();
-}
+function removeFile(i) { selectedFiles.splice(i,1); renderQueue(); }
 
 function renderQueue() {
   const q = document.getElementById('fileQueue');
-  q.innerHTML = '';
-  selectedFiles.forEach((f, i) => {
-    const url = URL.createObjectURL(f);
-    q.innerHTML += `
-      <div class="file-item" id="fitem-${i}">
-        <img class="file-thumb" src="${url}" alt=""/>
-        <div class="file-info">
-          <div class="file-name">${f.name}</div>
-          <div class="file-size">${(f.size/1024).toFixed(1)} KB</div>
-          <div class="file-status" id="fstatus-${i}" style="color:var(--muted)">Ready</div>
-        </div>
-        <button class="btn-remove-file" onclick="removeFile(${i})">✕</button>
-      </div>`;
-  });
+  q.innerHTML = selectedFiles.map((f,i) => `
+    <div class="file-row" id="fitem-${i}">
+      <img class="file-thumb" src="${URL.createObjectURL(f)}"/>
+      <div class="file-info">
+        <div class="file-name">${f.name}</div>
+        <div class="file-meta">${(f.size/1024).toFixed(1)} KB</div>
+        <div class="file-status" id="fstatus-${i}" style="color:var(--muted)">Ready</div>
+      </div>
+      <button class="btn-rm" onclick="removeFile(${i})">×</button>
+    </div>`).join('');
   const btn = document.getElementById('scanBtn');
   const lbl = document.getElementById('scanBtnLabel');
-  btn.disabled = selectedFiles.length === 0;
-  lbl.textContent = selectedFiles.length > 1
-    ? `Analyze ${selectedFiles.length} QR Codes`
-    : 'Analyze QR Code';
+  btn.disabled = !selectedFiles.length;
+  lbl.textContent = selectedFiles.length > 1 ? `Analyze ${selectedFiles.length} QR Codes` : 'Analyze QR Code';
 }
 
 // ── Scan ──────────────────────────────────────────────────────────────────────
 async function runScan() {
   if (!selectedFiles.length) return;
-
-  const scanBtn  = document.getElementById('scanBtn');
-  const loader   = document.getElementById('loader');
-  const errorBox = document.getElementById('errorBox');
-
-  scanBtn.disabled = true;
-  loader.classList.add('show');
-  errorBox.classList.remove('show');
+  const btn = document.getElementById('scanBtn');
+  const loader = document.getElementById('loader');
+  const errBox = document.getElementById('errorBox');
+  btn.disabled = true; loader.classList.add('show');
+  errBox.classList.remove('show');
   document.getElementById('resultsList').innerHTML = '';
 
-  const formData = new FormData();
-  selectedFiles.forEach(f => formData.append('qr_image', f));
+  const fd = new FormData();
+  selectedFiles.forEach(f => fd.append('qr_image', f));
 
   try {
-    const resp = await fetch('/scan', { method: 'POST', body: formData });
+    const resp = await fetch('/scan', { method:'POST', body:fd });
     const data = await resp.json();
     if (!resp.ok || data.error) {
-      errorBox.textContent = '❌ ' + (data.error || 'Something went wrong');
-      errorBox.classList.add('show');
+      errBox.textContent = data.error || 'Something went wrong'; errBox.classList.add('show');
     } else {
-      data.results.forEach((r, i) => {
+      data.results.forEach((r,i) => {
         const s = document.getElementById(`fstatus-${i}`);
-        if (s) {
-          if (r.error) { s.textContent = '❌ ' + r.error; s.style.color = 'var(--danger)'; }
-          else { s.textContent = '✓ Scanned'; s.style.color = 'var(--safe)'; }
-        }
+        if (s) { s.textContent = r.error ? '✗ '+r.error : '✓ Done'; s.style.color = r.error ? 'var(--danger)' : 'var(--safe)'; }
+        if (!r.error) saveToLocalHistory(r);
         renderResult(r);
       });
-      document.getElementById('resultsList').scrollIntoView({ behavior: 'smooth', block: 'start' });
+      const empty = document.getElementById('rightEmpty');
+      if (empty) empty.style.display = 'none';
+      document.getElementById('resultsList').scrollIntoView({behavior:'smooth',block:'start'});
     }
-  } catch(err) {
-    errorBox.textContent = '❌ Network error — make sure Flask is running';
-    errorBox.classList.add('show');
+  } catch(e) {
+    errBox.textContent = 'Network error — make sure Flask is running'; errBox.classList.add('show');
   }
-
-  loader.classList.remove('show');
-  scanBtn.disabled = false;
+  loader.classList.remove('show'); btn.disabled = false;
 }
 
-// ── Render a single result card ───────────────────────────────────────────────
-let cardCount = 0;
+// ── Render result card ────────────────────────────────────────────────────────
+let cc = 0;
 function renderResult(r) {
   const list = document.getElementById('resultsList');
-  if (r.error) {
-    list.innerHTML += `<div class="error-box show">❌ ${r.filename}: ${r.error}</div>`;
-    return;
-  }
+  if (r.error) { list.innerHTML += `<div class="err show">${r.filename}: ${r.error}</div>`; return; }
+
   const a   = r.analysis;
-  const cid = 'card' + (cardCount++);
-  const colorMap = { Safe:'#00cc88', Suspicious:'#ffaa00', Malicious:'#ff4444' };
-  const c   = colorMap[a.risk] || '#888';
+  const cid = 'rc' + (cc++);
   const ip  = a.details.ip_analysis || {};
-  const wh  = a.details.whois       || {};
-  const age = wh.domain_age_days;
-  const agePct   = age ? Math.min(100, (age / (10*365)) * 100) : 0;
-  const ageColor = !age ? '#888' : age < 30 ? '#ff4444' : age < 365 ? '#ffaa00' : '#00cc88';
-  const ageLabel = !age ? 'Unknown' : age < 365 ? age + ' days' : (age/365).toFixed(1) + ' yrs';
+  const wh  = a.details.whois || {};
+  const vt  = a.details.virustotal || {};
+
+  const colorMap  = { Safe:'#16a34a', Suspicious:'#d97706', Malicious:'#dc2626' };
+  const bgMap     = { Safe:var_safe_bg(), Suspicious:var_warn_bg(), Malicious:var_danger_bg() };
+  const bdMap     = { Safe:'#bbf7d0', Suspicious:'#fde68a', Malicious:'#fecaca' };
+  const stripMap  = { Safe:'#16a34a', Suspicious:'#f59e0b', Malicious:'#ef4444' };
+
+  const c    = colorMap[a.risk]  || '#6b7280';
+  const bg   = bgMap[a.risk]     || '#f9fafb';
+  const bd   = bdMap[a.risk]     || '#e5e7eb';
+  const sc   = stripMap[a.risk]  || '#9ca3af';
+
+  const age      = wh.domain_age_days;
+  const agePct   = age ? Math.min(100,(age/(10*365))*100) : 0;
+  const ageColor = !age?'#9ca3af':age<30?'#dc2626':age<365?'#d97706':'#16a34a';
+  const ageLabel = !age?'Unknown':age<365?age+' days':(age/365).toFixed(1)+' yrs';
+
+  const vtMal   = vt.malicious  || 0;
+  const vtSus   = vt.suspicious || 0;
+  const vtHar   = vt.harmless   || 0;
+  const vtUnd   = vt.undetected || 0;
+  const vtTotal = vt.total_engines || 0;
+  const vtColor = vtMal>0?'#dc2626':vtSus>0?'#d97706':'#16a34a';
+  const vtLabel = vtMal>0?'Malicious':vtSus>0?'Suspicious':'Clean';
 
   list.innerHTML += `
-  <div class="result-card" id="${cid}">
-    <div class="result-card-header">
-      <div class="score-ring" style="border-color:${c};color:${c}">${a.score}</div>
-      <div>
-        <div class="result-title">${a.emoji} ${a.risk} Link</div>
-        <div class="result-sub">${r.filename} · ${r.timestamp || ''}</div>
+  <div class="rcard" id="${cid}">
+    <div class="rcard-strip" style="background:${sc}"></div>
+    <div class="rcard-top">
+      <div class="score-pill" style="background:${bg};color:${c};border:1px solid ${bd}">${a.score}/100</div>
+      <div class="rcard-info">
+        <div class="rcard-title">${a.risk} — ${a.details.domain || r.url}</div>
+        <div class="rcard-file">${r.filename} · ${r.timestamp}</div>
       </div>
-      <div class="risk-badge" style="background:${c}18;color:${c};border:1px solid ${c}50">${a.risk}</div>
+      <div class="risk-tag" style="background:${bg};color:${c};border:1px solid ${bd}">${a.risk}</div>
     </div>
-    <div class="result-card-body">
-      <div class="url-card">
-        <div class="url-label">Decoded URL</div>
-        <div class="url-value">${r.url}</div>
+    <div class="rcard-body">
+
+      <div class="url-row">
+        <span class="url-lbl">URL</span>
+        <span class="url-val">${r.url}</span>
       </div>
 
-      <div class="inner-tabs">
-        <button class="inner-tab active" onclick="switchTab('${cid}','overview')">Overview</button>
-        <button class="inner-tab" onclick="switchTab('${cid}','ip')">IP Analysis</button>
-        <button class="inner-tab" onclick="switchTab('${cid}','whois')">WHOIS</button>
-        <button class="inner-tab" onclick="switchTab('${cid}','flags')">Findings (${a.flags.length})</button>
+      <div class="tabs">
+        <button class="tab active" onclick="st('${cid}','ov',this)">Overview</button>
+        <button class="tab" onclick="st('${cid}','vt',this)">VirusTotal</button>
+        <button class="tab" onclick="st('${cid}','ip',this)">IP</button>
+        <button class="tab" onclick="st('${cid}','wh',this)">WHOIS</button>
+        <button class="tab" onclick="st('${cid}','fl',this)">Findings (${a.flags.length})</button>
       </div>
 
-      <!-- Overview -->
-      <div class="inner-panel active" data-tab="${cid}-overview">
-        <div class="mini-grid">
-          <div class="mini-card"><div class="mini-label">Domain</div><div class="mini-value">${a.details.domain||'—'}</div></div>
-          <div class="mini-card"><div class="mini-label">Protocol</div><div class="mini-value">${(a.details.scheme||'?').toUpperCase()}</div></div>
-          <div class="mini-card"><div class="mini-label">Resolved IP</div><div class="mini-value">${a.details.resolved_ip||'—'}</div></div>
-          <div class="mini-card"><div class="mini-label">URL Length</div><div class="mini-value">${a.details.url_length} chars</div></div>
-          <div class="mini-card"><div class="mini-label">Subdomains</div><div class="mini-value">${a.details.subdomains ?? '—'}</div></div>
-          <div class="mini-card"><div class="mini-label">SSL Expiry</div><div class="mini-value">${a.details.ssl_expiry_days !== undefined ? a.details.ssl_expiry_days+' days' : 'N/A'}</div></div>
-        </div>
+      <div class="panel active" data-p="${cid}-ov">
+        <table class="dtable">
+          <tr><td>Domain</td><td>${a.details.domain||'—'}</td></tr>
+          <tr><td>Protocol</td><td>${(a.details.scheme||'?').toUpperCase()}</td></tr>
+          <tr><td>Resolved IP</td><td>${a.details.resolved_ip||'—'}</td></tr>
+          <tr><td>URL length</td><td>${a.details.url_length} chars</td></tr>
+          <tr><td>Subdomains</td><td>${a.details.subdomains??'—'}</td></tr>
+          <tr><td>SSL expiry</td><td>${a.details.ssl_expiry_days!==undefined?a.details.ssl_expiry_days+' days':'N/A'}</td></tr>
+        </table>
       </div>
 
-      <!-- IP Analysis -->
-      <div class="inner-panel" data-tab="${cid}-ip">
-        <div class="mini-grid ip-section">
-          <div class="mini-card"><div class="mini-label">IP Address</div><div class="mini-value">${ip.ip||'—'}</div></div>
-          <div class="mini-card"><div class="mini-label">Hostname</div><div class="mini-value">${ip.hostname||'—'}</div></div>
-          <div class="mini-card"><div class="mini-label">Organisation</div><div class="mini-value">${ip.org||'—'}</div></div>
-          <div class="mini-card"><div class="mini-label">City</div><div class="mini-value">${ip.city||'—'}</div></div>
-          <div class="mini-card"><div class="mini-label">Country</div><div class="mini-value">${ip.country||'—'}</div></div>
-          <div class="mini-card"><div class="mini-label">Timezone</div><div class="mini-value">${ip.timezone||'—'}</div></div>
-          <div class="mini-card" style="border-color:${ip.blacklisted?'var(--danger)':'var(--border)'}">
-            <div class="mini-label">Blacklisted</div>
-            <div class="mini-value" style="color:${ip.blacklisted?'var(--danger)':'var(--safe)'}">${ip.blacklisted?'YES ⚠️':'No ✓'}</div>
+      <div class="panel" data-p="${cid}-vt">
+        ${vt.error ? `<p style="color:var(--sub);font-size:13px;padding:8px 0">${vt.error}</p>` : `
+        <div class="vt-summary">
+          <div class="vt-score" style="color:${vtColor}">${vtMal+vtSus}<span style="font-size:14px;color:var(--sub)">/${vtTotal}</span></div>
+          <div>
+            <div class="vt-label" style="color:${vtColor}">${vtLabel}</div>
+            <div class="vt-sub">${vtMal} malicious · ${vtSus} suspicious · ${vtHar} harmless · ${vtUnd} undetected</div>
           </div>
         </div>
-        ${ip.blacklisted ? `<div style="margin-top:10px;font-size:13px;color:var(--danger)">⚠️ ${ip.blacklist_note}</div>` : ''}
+        <table class="dtable">
+          <tr><td>Malicious</td><td style="color:#dc2626">${vtMal}</td></tr>
+          <tr><td>Suspicious</td><td style="color:#d97706">${vtSus}</td></tr>
+          <tr><td>Harmless</td><td style="color:#16a34a">${vtHar}</td></tr>
+          <tr><td>Undetected</td><td>${vtUnd}</td></tr>
+          <tr><td>Total engines</td><td>${vtTotal}</td></tr>
+        </table>
+        ${vt.permalink?`<a class="vt-link" href="${vt.permalink}" target="_blank">View full report on VirusTotal ↗</a>`:''}`}
       </div>
 
-      <!-- WHOIS -->
-      <div class="inner-panel" data-tab="${cid}-whois">
-        <div class="mini-grid">
-          <div class="mini-card"><div class="mini-label">Registrar</div><div class="mini-value">${wh.registrar||'—'}</div></div>
-          <div class="mini-card"><div class="mini-label">Registered On</div><div class="mini-value">${wh.creation_date||'—'}</div></div>
-          <div class="mini-card"><div class="mini-label">Expires On</div><div class="mini-value">${wh.expiry_date||'—'}</div></div>
-          <div class="mini-card"><div class="mini-label">Country</div><div class="mini-value">${wh.country||'—'}</div></div>
-          <div class="mini-card"><div class="mini-label">Domain Age</div><div class="mini-value" style="color:${ageColor}">${ageLabel}</div></div>
-          <div class="age-bar-wrap">
-            <div class="age-bar-label">Domain trust age (10yr scale)</div>
-            <div class="age-bar-bg"><div class="age-bar-fill" style="width:0%;background:${ageColor}" data-pct="${agePct}"></div></div>
-          </div>
+      <div class="panel" data-p="${cid}-ip">
+        <table class="dtable">
+          <tr><td>IP address</td><td>${ip.ip||'—'}</td></tr>
+          <tr><td>Hostname</td><td>${ip.hostname||'—'}</td></tr>
+          <tr><td>Organisation</td><td>${ip.org||'—'}</td></tr>
+          <tr><td>City</td><td>${ip.city||'—'}</td></tr>
+          <tr><td>Country</td><td>${ip.country||'—'}</td></tr>
+          <tr><td>Timezone</td><td>${ip.timezone||'—'}</td></tr>
+          <tr><td>Blacklisted</td><td style="color:${ip.blacklisted?'#dc2626':'#16a34a'}">${ip.blacklisted?'Yes — '+ip.blacklist_note:'No'}</td></tr>
+        </table>
+      </div>
+
+      <div class="panel" data-p="${cid}-wh">
+        <table class="dtable">
+          <tr><td>Registrar</td><td>${wh.registrar||'—'}</td></tr>
+          <tr><td>Registered</td><td>${wh.creation_date||'—'}</td></tr>
+          <tr><td>Expires</td><td>${wh.expiry_date||'—'}</td></tr>
+          <tr><td>Country</td><td>${wh.country||'—'}</td></tr>
+          <tr><td>Domain age</td><td style="color:${ageColor}">${ageLabel}</td></tr>
+        </table>
+        <div class="age-row">
+          <div class="age-lbl">Domain trust age (10-year scale)</div>
+          <div class="age-track"><div class="age-fill" style="width:0%;background:${ageColor}" data-pct="${agePct}"></div></div>
         </div>
       </div>
 
-      <!-- Flags -->
-      <div class="inner-panel" data-tab="${cid}-flags">
-        ${a.flags.map(f => {
+      <div class="panel" data-p="${cid}-fl">
+        ${a.flags.map(f=>{
           const good = f.startsWith('✓');
-          const dc   = good ? '#00cc88' : c;
-          return `<div class="flag-item"><div class="flag-dot" style="background:${dc}"></div><span>${f}</span></div>`;
+          const ico  = good ? '✓' : f.startsWith('⚠') ? '⚠' : f.startsWith('🔴') ? '●' : '·';
+          const col  = good ? 'var(--safe)' : f.startsWith('⚠')||f.startsWith('🔴') ? 'var(--danger)' : 'var(--sub)';
+          return `<div class="finding"><span class="finding-icon" style="color:${col}">${ico}</span><span>${f}</span></div>`;
         }).join('')}
       </div>
 
-      <button class="btn-report" onclick="downloadReport(${JSON.stringify(r).replace(/</g,'&lt;')})">📄 Download Report</button>
+      <div class="action-row">
+        <button class="btn-sec" onclick="downloadReport(${JSON.stringify(r).replace(/</g,'&lt;')})">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+          Download report
+        </button>
+      </div>
     </div>
   </div>`;
 
-  // Animate age bars
-  setTimeout(() => {
-    document.querySelectorAll('.age-bar-fill').forEach(el => {
-      el.style.width = (el.dataset.pct || 0) + '%';
-    });
-  }, 200);
+  setTimeout(()=>{
+    document.querySelectorAll('.age-fill').forEach(el=>{ el.style.width=(el.dataset.pct||0)+'%'; });
+  }, 150);
 }
 
-// ── Inner tab switch ──────────────────────────────────────────────────────────
-function switchTab(cid, tab) {
+function var_safe_bg(){ return '#f0fdf4'; }
+function var_warn_bg(){ return '#fffbeb'; }
+function var_danger_bg(){ return '#fef2f2'; }
+
+// ── Tab switch ────────────────────────────────────────────────────────────────
+function st(cid, tab, btn) {
   const card = document.getElementById(cid);
-  card.querySelectorAll('.inner-tab').forEach(b => b.classList.remove('active'));
-  card.querySelectorAll('.inner-panel').forEach(p => p.classList.remove('active'));
-  event.currentTarget.classList.add('active');
-  card.querySelector(`[data-tab="${cid}-${tab}"]`).classList.add('active');
+  card.querySelectorAll('.tab').forEach(b=>b.classList.remove('active'));
+  card.querySelectorAll('.panel').forEach(p=>p.classList.remove('active'));
+  btn.classList.add('active');
+  card.querySelector(`[data-p="${cid}-${tab}"]`).classList.add('active');
 }
 
-// ── Download Report ───────────────────────────────────────────────────────────
+// ── Download report ───────────────────────────────────────────────────────────
 function downloadReport(r) {
-  const a  = r.analysis;
-  const ip = a.details.ip_analysis || {};
-  const wh = a.details.whois       || {};
-  const lines = [
-    '╔══════════════════════════════════════════════════════╗',
-    '║          LinQ-R — QR Threat Detection Report         ║',
-    '╚══════════════════════════════════════════════════════╝',
-    '',
-    `File      : ${r.filename}`,
-    `Scanned   : ${r.timestamp}`,
-    `URL       : ${r.url}`,
-    `Risk      : ${a.emoji} ${a.risk}`,
-    `Score     : ${a.score} / 100`,
-    '',
-    '── URL Analysis ─────────────────────────────────────',
-    `Domain    : ${a.details.domain}`,
-    `Protocol  : ${a.details.scheme?.toUpperCase()}`,
-    `Resolved  : ${a.details.resolved_ip}`,
-    `URL Len   : ${a.details.url_length} chars`,
-    `SSL Expiry: ${a.details.ssl_expiry_days ?? 'N/A'} days`,
-    '',
-    '── IP Analysis ──────────────────────────────────────',
-    `IP        : ${ip.ip || 'N/A'}`,
-    `Hostname  : ${ip.hostname || 'N/A'}`,
-    `Org       : ${ip.org || 'N/A'}`,
-    `Location  : ${ip.city}, ${ip.region}, ${ip.country}`,
-    `Timezone  : ${ip.timezone || 'N/A'}`,
-    `Blacklist : ${ip.blacklisted ? 'YES — ' + ip.blacklist_note : 'Clean'}`,
-    '',
-    '── WHOIS Intelligence ───────────────────────────────',
-    `Registrar : ${wh.registrar}`,
-    `Registered: ${wh.creation_date}`,
-    `Expires   : ${wh.expiry_date}`,
-    `Country   : ${wh.country}`,
-    `Age       : ${wh.domain_age_days ? wh.domain_age_days + ' days' : 'Unknown'}`,
-    '',
-    '── Findings ─────────────────────────────────────────',
-    ...a.flags.map(f => `  • ${f}`),
-    '',
-    '─────────────────────────────────────────────────────',
-    'Generated by LinQ-R — Intelligent QR & URL Threat Detection System',
+  const a=r.analysis, ip=a.details.ip_analysis||{}, wh=a.details.whois||{}, vt=a.details.virustotal||{};
+  const lines=[
+    'LinQ-R — QR Threat Detection Report',
+    '═'.repeat(50),'',
+    `File      : ${r.filename}`,`Scanned   : ${r.timestamp}`,
+    `URL       : ${r.url}`,`Risk      : ${a.risk}`,`Score     : ${a.score}/100`,'',
+    'URL Analysis','─'.repeat(30),
+    `Domain    : ${a.details.domain}`,`Protocol  : ${(a.details.scheme||'').toUpperCase()}`,
+    `Resolved  : ${a.details.resolved_ip}`,`URL Length: ${a.details.url_length} chars`,
+    `SSL Expiry: ${a.details.ssl_expiry_days??'N/A'} days`,'',
+    'VirusTotal','─'.repeat(30),
+    `Malicious : ${vt.malicious??'N/A'}`,`Suspicious: ${vt.suspicious??'N/A'}`,
+    `Harmless  : ${vt.harmless??'N/A'}`,`Engines   : ${vt.total_engines??'N/A'}`,
+    `Report    : ${vt.permalink??'N/A'}`,'',
+    'IP Analysis','─'.repeat(30),
+    `IP        : ${ip.ip||'N/A'}`,`Org       : ${ip.org||'N/A'}`,
+    `Location  : ${ip.city}, ${ip.country}`,`Blacklist : ${ip.blacklisted?'YES — '+ip.blacklist_note:'Clean'}`,'',
+    'WHOIS','─'.repeat(30),
+    `Registrar : ${wh.registrar}`,`Registered: ${wh.creation_date}`,
+    `Expires   : ${wh.expiry_date}`,`Age       : ${wh.domain_age_days?wh.domain_age_days+' days':'Unknown'}`,'',
+    'Findings','─'.repeat(30),
+    ...a.flags.map(f=>'  '+f),'',
+    '─'.repeat(50),
+    'Generated by LinQ-R — Intelligent QR & URL Threat Detection'
   ];
-  const blob = new Blob([lines.join('\n')], { type: 'text/plain' });
-  const link = document.createElement('a');
-  link.href     = URL.createObjectURL(blob);
-  link.download = `linq-r-report-${Date.now()}.txt`;
-  link.click();
+  const blob=new Blob([lines.join('\n')],{type:'text/plain'});
+  const lnk=document.createElement('a');
+  lnk.href=URL.createObjectURL(blob);lnk.download=`linq-r-${Date.now()}.txt`;lnk.click();
 }
 
 // ── History ───────────────────────────────────────────────────────────────────
-async function loadHistory() {
+const HK = 'linq_r_history';
+function getLocalHistory(){ try{ return JSON.parse(localStorage.getItem(HK)||'[]'); }catch(e){ return []; } }
+function saveToLocalHistory(e){ const h=getLocalHistory(); h.unshift(e); localStorage.setItem(HK,JSON.stringify(h.slice(0,50))); }
+
+function loadHistory() {
   const list = document.getElementById('historyList');
-  list.innerHTML = '<div style="color:var(--muted);font-size:14px;padding:20px 0">Loading…</div>';
-  try {
-    const resp = await fetch('/history');
-    const data = await resp.json();
-    if (!data.length) {
-      list.innerHTML = `<div class="empty-state"><div class="empty-icon">📭</div>No scans yet — go scan a QR code!</div>`;
-      return;
-    }
-    const colorMap = { Safe:'#00cc88', Suspicious:'#ffaa00', Malicious:'#ff4444' };
-    list.innerHTML = data.map((entry, i) => {
-      const c = colorMap[entry.analysis?.risk] || '#888';
-      return `
-        <div class="history-item" onclick="replayHistoryItem(${i})">
-          <div class="h-dot" style="background:${c}"></div>
-          <div class="h-url">${entry.url}</div>
-          <div class="h-risk" style="color:${c}">${entry.analysis?.risk || '?'}</div>
-          <div class="h-score" style="color:${c}">${entry.analysis?.score ?? '?'}/100</div>
-          <div class="h-time">${entry.timestamp || ''}</div>
-        </div>`;
-    }).join('');
-    window._historyData = data;
-  } catch(e) {
-    list.innerHTML = '<div class="error-box show">❌ Could not load history</div>';
+  const data = getLocalHistory();
+  if (!data.length) {
+    list.innerHTML=`<div class="empty"><div class="empty-ico">○</div><p>No scans yet. Go scan a QR code.</p></div>`;
+    return;
   }
+  const cm={Safe:'#16a34a',Suspicious:'#d97706',Malicious:'#dc2626'};
+  list.innerHTML = data.map((e,i)=>{
+    const c=cm[e.analysis?.risk]||'#9ca3af';
+    return `<div class="hitem" onclick="replayHistory(${i})">
+      <div class="hdot" style="background:${c}"></div>
+      <div class="hurl">${e.url}</div>
+      <div class="hrisk" style="color:${c}">${e.analysis?.risk||'?'}</div>
+      <div class="hscore">${e.analysis?.score??'?'}/100</div>
+      <div class="htime">${e.timestamp||''}</div>
+    </div>`;
+  }).join('');
+  window._hd = data;
 }
 
-function replayHistoryItem(idx) {
-  const entry = window._historyData[idx];
-  if (!entry) return;
-  // Switch to scan page and render result
-  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
-  document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+function replayHistory(i) {
+  const e=window._hd[i]; if(!e) return;
+  document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
+  document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));
   document.getElementById('page-scan').classList.add('active');
   document.querySelector('.tab-btn').classList.add('active');
-  document.getElementById('resultsList').innerHTML = '';
-  renderResult(entry);
-  document.getElementById('resultsList').scrollIntoView({ behavior:'smooth' });
+  document.getElementById('resultsList').innerHTML='';
+  renderResult(e);
+  document.getElementById('resultsList').scrollIntoView({behavior:'smooth'});
 }
 
-async function clearHistory() {
-  if (!confirm('Clear all scan history?')) return;
-  await fetch('/history/clear', { method:'POST' });
-  loadHistory();
+function clearHistory() {
+  if(!confirm('Clear your scan history?')) return;
+  localStorage.removeItem(HK); loadHistory();
 }
 </script>
 </body>

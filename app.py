@@ -2,29 +2,59 @@ from flask import Flask, render_template, request, jsonify
 import cv2
 import numpy as np
 from PIL import Image
-import io, re, socket, ssl, datetime, urllib.parse, json, os
+import io, re, socket, ssl, datetime, urllib.parse, json, os, base64
+import urllib.request
 import whois
 
 app = Flask(__name__)
 
-HISTORY_FILE = "scan_history.json"
+# ─── VirusTotal API ───────────────────────────────────────────────────────────
+VT_API_KEY = "1024484f2a58d633c56d0fb928189fa037b152c7efb679d04805a6baa9e87ff9"
 
-# ─── Scan History Helpers ─────────────────────────────────────────────────────
-def load_history():
-    if os.path.exists(HISTORY_FILE):
-        try:
-            with open(HISTORY_FILE, "r") as f:
-                return json.load(f)
-        except Exception:
-            return []
-    return []
+def check_virustotal(url):
+    """Submit URL to VirusTotal and return threat summary."""
+    info = {
+        "malicious": 0, "suspicious": 0, "harmless": 0,
+        "undetected": 0, "total_engines": 0,
+        "scan_id": None, "permalink": None, "error": None
+    }
+    try:
+        # Step 1: Submit URL for scanning
+        vt_url    = "https://www.virustotal.com/api/v3/urls"
+        post_data = urllib.parse.urlencode({"url": url}).encode()
+        req = urllib.request.Request(
+            vt_url,
+            data=post_data,
+            headers={"x-apikey": VT_API_KEY, "Content-Type": "application/x-www-form-urlencoded"}
+        )
+        with urllib.request.urlopen(req, timeout=10) as resp:
+            result  = json.loads(resp.read().decode())
+            scan_id = result["data"]["id"]
+            info["scan_id"] = scan_id
 
-def save_to_history(entry):
-    history = load_history()
-    history.insert(0, entry)
-    history = history[:50]   # keep last 50 scans
-    with open(HISTORY_FILE, "w") as f:
-        json.dump(history, f, indent=2)
+        # Step 2: Get analysis result using scan id
+        analysis_url = f"https://www.virustotal.com/api/v3/analyses/{scan_id}"
+        req2 = urllib.request.Request(
+            analysis_url,
+            headers={"x-apikey": VT_API_KEY}
+        )
+        with urllib.request.urlopen(req2, timeout=10) as resp2:
+            analysis = json.loads(resp2.read().decode())
+            stats    = analysis["data"]["attributes"]["stats"]
+            info["malicious"]    = stats.get("malicious",  0)
+            info["suspicious"]   = stats.get("suspicious", 0)
+            info["harmless"]     = stats.get("harmless",   0)
+            info["undetected"]   = stats.get("undetected", 0)
+            info["total_engines"]= sum(stats.values())
+
+        # Permalink to full report
+        url_id = base64.urlsafe_b64encode(url.encode()).decode().rstrip("=")
+        info["permalink"] = f"https://www.virustotal.com/gui/url/{url_id}"
+
+    except Exception as e:
+        info["error"] = f"Could not reach VirusTotal ({type(e).__name__})"
+
+    return info
 
 
 # ─── QR Decode ────────────────────────────────────────────────────────────────
@@ -57,7 +87,7 @@ def get_whois_info(domain):
     info = {"registrar": "Unknown", "creation_date": "Unknown",
             "expiry_date": "Unknown", "domain_age_days": None, "country": "Unknown"}
     try:
-        w  = whois.whois(domain.split(":")[0])
+        w = whois.whois(domain.split(":")[0])
         info["registrar"] = w.registrar or "Unknown"
         info["country"]   = w.country   or "Unknown"
         cd = w.creation_date
@@ -83,15 +113,12 @@ def get_ip_analysis(domain, resolved_ip):
     if not resolved_ip or resolved_ip == "N/A":
         return info
 
-    # Reverse DNS
     try:
         info["hostname"] = socket.gethostbyaddr(resolved_ip)[0]
     except Exception:
         info["hostname"] = resolved_ip
 
-    # GeoIP via ip-api.com (free, no key needed)
     try:
-        import urllib.request
         with urllib.request.urlopen(
             f"http://ip-api.com/json/{resolved_ip}?fields=status,org,city,regionName,country,timezone",
             timeout=4
@@ -106,11 +133,10 @@ def get_ip_analysis(domain, resolved_ip):
     except Exception:
         pass
 
-    # Simple blacklist check — known malicious IP ranges / hosting abuse patterns
     suspicious_orgs = ["bulletproof", "fozzy", "3NT", "serverius", "psychz", "hostkey"]
     if any(s.lower() in info["org"].lower() for s in suspicious_orgs):
-        info["blacklisted"]     = True
-        info["blacklist_note"]  = "Hosted on known abuse-prone network"
+        info["blacklisted"]    = True
+        info["blacklist_note"] = "Hosted on known abuse-prone network"
 
     return info
 
@@ -168,7 +194,6 @@ def analyze_url(url):
     if any(s in domain for s in shorteners):
         score += 20; flags.append("URL shortener — true destination is hidden")
 
-    # DNS
     resolved_ip = "N/A"
     try:
         resolved_ip = socket.gethostbyname(domain)
@@ -178,14 +203,13 @@ def analyze_url(url):
         score += 25; flags.append("Domain does not resolve — possibly fake")
         details["resolved_ip"] = "N/A"
 
-    # SSL
     if scheme == "https":
         try:
             ctx  = ssl.create_default_context()
             conn = ctx.wrap_socket(socket.socket(), server_hostname=domain)
             conn.settimeout(3); conn.connect((domain, 443))
-            cert     = conn.getpeercert()
-            exp_str  = cert.get("notAfter", "")
+            cert    = conn.getpeercert()
+            exp_str = cert.get("notAfter", "")
             if exp_str:
                 exp_date  = datetime.datetime.strptime(exp_str, "%b %d %H:%M:%S %Y %Z")
                 days_left = (exp_date - datetime.datetime.utcnow()).days
@@ -200,7 +224,6 @@ def analyze_url(url):
         except Exception:
             details["ssl_expiry_days"] = "N/A"
 
-    # WHOIS
     whois_info = get_whois_info(domain)
     details["whois"] = whois_info
     age = whois_info.get("domain_age_days")
@@ -216,7 +239,6 @@ def analyze_url(url):
     else:
         score += 10; flags.append("WHOIS unavailable — privacy-protected domain")
 
-    # IP Analysis
     ip_info = get_ip_analysis(domain, resolved_ip)
     details["ip_analysis"] = ip_info
     if ip_info.get("blacklisted"):
@@ -224,7 +246,24 @@ def analyze_url(url):
     if ip_info.get("country") not in ("Unknown", ""):
         flags.append(f"✓ Server location: {ip_info['city']}, {ip_info['country']}")
 
-    # Final score
+    # ─── VirusTotal ───────────────────────────────────────────────────────────
+    vt_info = check_virustotal(url)
+    details["virustotal"] = vt_info
+    if vt_info.get("error"):
+        flags.append(f"VirusTotal: {vt_info['error']}")
+    else:
+        mal   = vt_info.get("malicious",  0)
+        sus   = vt_info.get("suspicious", 0)
+        total = vt_info.get("total_engines", 0)
+        if mal > 0:
+            score += min(40, mal * 8)
+            flags.append(f"🔴 VirusTotal: {mal}/{total} engines flagged MALICIOUS")
+        elif sus > 0:
+            score += min(20, sus * 5)
+            flags.append(f"🟡 VirusTotal: {sus}/{total} engines flagged SUSPICIOUS")
+        else:
+            flags.append(f"✓ VirusTotal: Clean — 0/{total} engines flagged")
+
     score = min(score, 100)
     details["score"] = score
 
@@ -265,24 +304,11 @@ def scan():
             "analysis":  analysis,
             "timestamp": datetime.datetime.now().strftime("%d %b %Y, %I:%M %p")
         }
-        save_to_history(entry)
         results.append(entry)
 
     return jsonify({"results": results})
 
 
-@app.route("/history", methods=["GET"])
-def history():
-    return jsonify(load_history())
-
-
-@app.route("/history/clear", methods=["POST"])
-def clear_history():
-    if os.path.exists(HISTORY_FILE):
-        os.remove(HISTORY_FILE)
-    return jsonify({"ok": True})
-
-
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 5000))
-app.run(debug=False, host='0.0.0.0', port=port)
+    app.run(debug=False, host='0.0.0.0', port=port)
